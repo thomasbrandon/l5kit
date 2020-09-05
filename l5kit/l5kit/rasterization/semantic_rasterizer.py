@@ -36,17 +36,22 @@ def elements_within_bounds(center: np.ndarray, bounds: np.ndarray, half_extent: 
     return np.nonzero(x_min_in & y_min_in & x_max_in & y_max_in)[0]
 
 
-def cv2_subpixel(coords: np.ndarray) -> np.ndarray:
+def transform_points_subpixel(points: np.ndarray, transf_matrix: np.ndarray) -> np.ndarray:
     """
-    Cast coordinates to numpy.int but keep fractional part by previously multiplying by 2**CV2_SHIFT
-    cv2 calls will use shift to restore original values with higher precision
+    Transform points using transformation matrix and convert to shifted integers.
+
+    Points are transformed as in `transform_points` and then cast to numpy.int, keeping the
+    fractional part by multiplying by 2**CV2_SHIFT. cv2 calls will use shift to restore original
+    values with higher precision.
 
     Args:
-        coords (np.ndarray): XY coords as float
+        points (np.ndarray): Input points (Nx2), (Nx3) or (Nx4).
+        transf_matrix (np.ndarray): 3x3 or 4x4 transformation matrix for 2D and 3D input respectively
 
     Returns:
-        np.ndarray: XY coords as int for cv2 shift draw
+        np.ndarray: array of shape (N,2) for 2D input points, or (N,3) points for 3D input points
     """
+    coords = transform_points(points, transf_matrix)
     coords = coords * CV2_SHIFT_VALUE
     coords = coords.astype(np.int)
     return coords
@@ -176,8 +181,8 @@ class SemanticRasterizer(Rasterizer):
 
             # get image coords
             lane_coords = self.proto_API.get_lane_coords(self.bounds_info["lanes"]["ids"][idx])
-            xy_left = cv2_subpixel(transform_points(lane_coords["xyz_left"][:, :2], world_to_image_space))
-            xy_right = cv2_subpixel(transform_points(lane_coords["xyz_right"][:, :2], world_to_image_space))
+            xy_left = transform_points_subpixel(lane_coords["xyz_left"][:, :2], world_to_image_space)
+            xy_right = transform_points_subpixel(lane_coords["xyz_right"][:, :2], world_to_image_space)
             lanes_area = np.vstack((xy_left, np.flip(xy_right, 0)))  # start->end left then end->start right
 
             # Note(lberg): this called on all polygons skips some of them, don't know why
@@ -205,7 +210,7 @@ class SemanticRasterizer(Rasterizer):
         for idx in elements_within_bounds(center_world, self.bounds_info["crosswalks"]["bounds"], raster_radius):
             crosswalk = self.proto_API.get_crosswalk_coords(self.bounds_info["crosswalks"]["ids"][idx])
 
-            xy_cross = cv2_subpixel(transform_points(crosswalk["xyz"][:, :2], world_to_image_space))
+            xy_cross = transform_points_subpixel(crosswalk["xyz"][:, :2], world_to_image_space)
             crosswalks.append(xy_cross)
 
         cv2.polylines(img, crosswalks, True, (255, 117, 69), lineType=cv2.LINE_AA, shift=CV2_SHIFT)
