@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
+import numba as nb
 
 from ..data.filter import filter_tl_faces_by_status
 from ..data.map_api import MapAPI
@@ -36,7 +37,9 @@ def elements_within_bounds(center: np.ndarray, bounds: np.ndarray, half_extent: 
     return np.nonzero(x_min_in & y_min_in & x_max_in & y_max_in)[0]
 
 
-def transform_points_subpixel(points: np.ndarray, transf_matrix: np.ndarray) -> np.ndarray:
+@nb.guvectorize([(nb.float64[:,:], nb.float64[:,:], nb.int32[:,:])],
+                "(p,d),(t,t)->(p,d)", nopython=True)
+def transform_points_subpixel(points, transf_matrix, res):
     """
     Transform points using transformation matrix and convert to shifted integers.
 
@@ -51,11 +54,15 @@ def transform_points_subpixel(points: np.ndarray, transf_matrix: np.ndarray) -> 
     Returns:
         np.ndarray: array of shape (N,2) for 2D input points, or (N,3) points for 3D input points
     """
-    coords = transform_points(points, transf_matrix)
-    coords = coords * CV2_SHIFT_VALUE
-    coords = coords.astype(np.int)
-    return coords
-
+    n_dim = transf_matrix.shape[0] - 1
+    # For each point compute a dot product with the transformation matrix fixing the Z coord to 1.
+    for p in range(points.shape[0]):
+        for out_dim in range(n_dim):
+            val = 0
+            for dim in range(n_dim):
+                val += points[p, dim] * transf_matrix[out_dim, dim]
+            val += transf_matrix[out_dim, n_dim] # *1 - Fixed Z
+            res[p,out_dim] = int(val * CV2_SHIFT_VALUE)
 
 class SemanticRasterizer(Rasterizer):
     """
