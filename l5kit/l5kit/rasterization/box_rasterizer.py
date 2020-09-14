@@ -6,11 +6,10 @@ import numpy as np
 from l5kit.data.zarr_dataset import AGENT_DTYPE
 
 from ..data.filter import filter_agents_by_labels, filter_agents_by_track_id
-from ..geometry import rotation33_as_yaw, transform_points
+from ..geometry import SUBPIXEL_SHIFT, rotation33_as_yaw, transform_points, transform_points_subpixel
 from ..geometry.transform import yaw_as_rotation33
 from .rasterizer import EGO_EXTENT_HEIGHT, EGO_EXTENT_LENGTH, EGO_EXTENT_WIDTH, Rasterizer
 from .render_context import RenderContext
-from .semantic_rasterizer import CV2_SHIFT, cv2_subpixel
 
 
 def get_ego_as_agent(frame: np.ndarray) -> np.ndarray:  # TODO this can be useful to have around
@@ -64,11 +63,11 @@ def draw_boxes(
         r_m = yaw_as_rotation33(agent["yaw"])
         box_world_coords[idx] = transform_points(corners, r_m) + agent["centroid"][:2]
 
-    box_raster_coords = transform_points(box_world_coords.reshape((-1, 2)), raster_from_world)
+    box_raster_coords = transform_points_subpixel(box_world_coords.reshape((-1, 2)), raster_from_world)
 
     # fillPoly wants polys in a sequence with points inside as (x,y)
-    box_raster_coords = cv2_subpixel(box_raster_coords.reshape((-1, 4, 2)))
-    cv2.fillPoly(im, box_raster_coords, color=color, lineType=cv2.LINE_AA, shift=CV2_SHIFT)
+    box_raster_coords = box_raster_coords.reshape((-1, 4, 2))
+    cv2.fillPoly(im, box_raster_coords, color=color, lineType=cv2.LINE_AA, shift=SUBPIXEL_SHIFT)
     return im
 
 

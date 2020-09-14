@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import transforms3d
 
-from l5kit.geometry import transform_point, transform_points
+from l5kit.geometry import SUBPIXEL_SHIFT, transform_point, transform_points, transform_points_subpixel
 
 
 def test_transform_points() -> None:
@@ -58,3 +58,13 @@ def test_wrong_input_shape() -> None:
     with pytest.raises(AssertionError):
         points = np.zeros((10, 3))  # should be 2D for a 3D matrix
         transform_points(points, tf[:3, :3])
+
+
+def test_transform_points_subpixel_equivalence() -> None:
+    # Generate random input points and an identity transform
+    input_points = np.random.rand(10, 2)
+    tf = np.identity(3)
+
+    subpixel_points = transform_points_subpixel(input_points, tf)
+    assert subpixel_points.dtype == np.int64()
+    np.testing.assert_almost_equal(subpixel_points / (2 ** SUBPIXEL_SHIFT), input_points, decimal=1)

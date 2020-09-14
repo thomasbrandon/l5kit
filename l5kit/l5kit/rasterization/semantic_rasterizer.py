@@ -6,13 +6,9 @@ import numpy as np
 
 from ..data.filter import filter_tl_faces_by_status
 from ..data.map_api import MapAPI
-from ..geometry import rotation33_as_yaw, transform_point, transform_points
+from ..geometry import SUBPIXEL_SHIFT, rotation33_as_yaw, transform_point, transform_points_subpixel
 from .rasterizer import Rasterizer
 from .render_context import RenderContext
-
-# sub-pixel drawing precision constants
-CV2_SHIFT = 8  # how many bits to shift in drawing
-CV2_SHIFT_VALUE = 2 ** CV2_SHIFT
 
 
 def elements_within_bounds(center: np.ndarray, bounds: np.ndarray, half_extent: float) -> np.ndarray:
@@ -35,22 +31,6 @@ def elements_within_bounds(center: np.ndarray, bounds: np.ndarray, half_extent: 
     x_max_in = x_center < bounds[:, 1, 0] + half_extent
     y_max_in = y_center < bounds[:, 1, 1] + half_extent
     return np.nonzero(x_min_in & y_min_in & x_max_in & y_max_in)[0]
-
-
-def cv2_subpixel(coords: np.ndarray) -> np.ndarray:
-    """
-    Cast coordinates to numpy.int but keep fractional part by previously multiplying by 2**CV2_SHIFT
-    cv2 calls will use shift to restore original values with higher precision
-
-    Args:
-        coords (np.ndarray): XY coords as float
-
-    Returns:
-        np.ndarray: XY coords as int for cv2 shift draw
-    """
-    coords = coords * CV2_SHIFT_VALUE
-    coords = coords.astype(np.int)
-    return coords
 
 
 class SemanticRasterizer(Rasterizer):
@@ -170,12 +150,12 @@ class SemanticRasterizer(Rasterizer):
 
             # get image coords
             lane_coords = self.proto_API.get_lane_coords(self.bounds_info["lanes"]["ids"][idx])
-            xy_left = cv2_subpixel(transform_points(lane_coords["xyz_left"][:, :2], raster_from_world))
-            xy_right = cv2_subpixel(transform_points(lane_coords["xyz_right"][:, :2], raster_from_world))
+            xy_left = transform_points_subpixel(lane_coords["xyz_left"][:, :2], raster_from_world)
+            xy_right = transform_points_subpixel(lane_coords["xyz_right"][:, :2], raster_from_world)
             lanes_area = np.vstack((xy_left, np.flip(xy_right, 0)))  # start->end left then end->start right
 
             # Note(lberg): this called on all polygons skips some of them, don't know why
-            cv2.fillPoly(img, [lanes_area], (17, 17, 31), lineType=cv2.LINE_AA, shift=CV2_SHIFT)
+            cv2.fillPoly(img, [lanes_area], (17, 17, 31), lineType=cv2.LINE_AA, shift=SUBPIXEL_SHIFT)
 
             lane_type = "default"  # no traffic light face is controlling this lane
             lane_tl_ids = set([MapAPI.id_as_str(la_tc) for la_tc in lane.traffic_controls])
@@ -189,20 +169,20 @@ class SemanticRasterizer(Rasterizer):
 
             lanes_lines[lane_type].extend([xy_left, xy_right])
 
-        cv2.polylines(img, lanes_lines["default"], False, (255, 217, 82), lineType=cv2.LINE_AA, shift=CV2_SHIFT)
-        cv2.polylines(img, lanes_lines["green"], False, (0, 255, 0), lineType=cv2.LINE_AA, shift=CV2_SHIFT)
-        cv2.polylines(img, lanes_lines["yellow"], False, (255, 255, 0), lineType=cv2.LINE_AA, shift=CV2_SHIFT)
-        cv2.polylines(img, lanes_lines["red"], False, (255, 0, 0), lineType=cv2.LINE_AA, shift=CV2_SHIFT)
+        cv2.polylines(img, lanes_lines["default"], False, (255, 217, 82), lineType=cv2.LINE_AA, shift=SUBPIXEL_SHIFT)
+        cv2.polylines(img, lanes_lines["green"], False, (0, 255, 0), lineType=cv2.LINE_AA, shift=SUBPIXEL_SHIFT)
+        cv2.polylines(img, lanes_lines["yellow"], False, (255, 255, 0), lineType=cv2.LINE_AA, shift=SUBPIXEL_SHIFT)
+        cv2.polylines(img, lanes_lines["red"], False, (255, 0, 0), lineType=cv2.LINE_AA, shift=SUBPIXEL_SHIFT)
 
         # plot crosswalks
         crosswalks = []
         for idx in elements_within_bounds(center_in_world, self.bounds_info["crosswalks"]["bounds"], raster_radius):
             crosswalk = self.proto_API.get_crosswalk_coords(self.bounds_info["crosswalks"]["ids"][idx])
 
-            xy_cross = cv2_subpixel(transform_points(crosswalk["xyz"][:, :2], raster_from_world))
+            xy_cross = transform_points_subpixel(crosswalk["xyz"][:, :2], raster_from_world)
             crosswalks.append(xy_cross)
 
-        cv2.polylines(img, crosswalks, True, (255, 117, 69), lineType=cv2.LINE_AA, shift=CV2_SHIFT)
+        cv2.polylines(img, crosswalks, True, (255, 117, 69), lineType=cv2.LINE_AA, shift=SUBPIXEL_SHIFT)
 
         return img
 

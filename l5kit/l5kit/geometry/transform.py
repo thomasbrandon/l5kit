@@ -4,6 +4,10 @@ import numpy as np
 import pymap3d as pm
 import transforms3d
 
+# sub-pixel drawing precision constants
+SUBPIXEL_SHIFT = 8  # how many bits to shift in drawing
+SUBPIXEL_SHIFT_VALUE = 2 ** SUBPIXEL_SHIFT
+
 
 def compute_agent_pose(agent_centroid_m: np.ndarray, agent_yaw_rad: float) -> np.ndarray:
     """Return the agent pose as a 3x3 matrix. This corresponds to world_from_agent matrix.
@@ -100,6 +104,23 @@ def transform_points(points: np.ndarray, transf_matrix: np.ndarray) -> np.ndarra
     transf_matrix = transf_matrix.T
 
     return points @ transf_matrix[:num_dims, :num_dims] + transf_matrix[-1, :num_dims]
+
+
+def transform_points_subpixel(points: np.ndarray, transf_matrix: np.ndarray) -> np.ndarray:
+    """
+    Transform points using transformation matrix and cast coordinates to numpy.int but keep fractional part by
+    previously multiplying by 2**SUBPIXEL_SHIFT
+
+    Args:
+        points (np.ndarray): Input points array of floats of shape (Nx2), (Nx3) or (Nx4).
+        transf_matrix (np.ndarray): 3x3 or 4x4 transformation matrix for 2D and 3D input respectively
+
+    Returns:
+        np.ndarray: array of int of shape (N,2) for 2D input points, or (N,3) points for 3D input points
+    """
+    points_subpixel = transform_points(points, transf_matrix) * SUBPIXEL_SHIFT_VALUE
+    points_subpixel = points_subpixel.astype(np.int)
+    return points_subpixel
 
 
 def transform_point(point: np.ndarray, transf_matrix: np.ndarray) -> np.ndarray:
