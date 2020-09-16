@@ -1,11 +1,20 @@
+from typing import Callable
+
 import numpy as np
 import pytest
 import transforms3d
 
-from l5kit.geometry import SUBPIXEL_SHIFT, transform_point, transform_points, transform_points_subpixel
+from l5kit.geometry import SUBPIXEL_SHIFT, transform_point
+from l5kit.geometry.transform import (
+    transform_points_nb,
+    transform_points_np,
+    transform_points_subpixel_nb,
+    transform_points_subpixel_np,
+)
 
 
-def test_transform_points() -> None:
+@pytest.mark.parametrize("transform_points", [transform_points_np, transform_points_nb])
+def test_transform_points(transform_points: Callable) -> None:
     tf = np.asarray([[1.0, 0, 100], [0, 0.5, 50], [0, 0, 1]])
 
     points = np.array([[0, 10], [10, 0], [10, 10]])
@@ -27,7 +36,8 @@ def test_transform_single_point() -> None:
     np.testing.assert_array_equal(output_point, expected_point)
 
 
-def test_transform_points_revert_equivalence() -> None:
+@pytest.mark.parametrize("transform_points", [transform_points_np, transform_points_nb])
+def test_transform_points_revert_equivalence(transform_points: Callable) -> None:
     input_points = np.random.rand(10, 3)
 
     #  Generate some random transformation matrix
@@ -44,7 +54,8 @@ def test_transform_points_revert_equivalence() -> None:
     np.testing.assert_almost_equal(input_points_recovered, input_points, decimal=10)
 
 
-def test_wrong_input_shape() -> None:
+@pytest.mark.parametrize("transform_points", [transform_points_np, transform_points_nb])
+def test_wrong_input_shape(transform_points: Callable) -> None:
     tf = np.eye(4)
 
     with pytest.raises(AssertionError):
@@ -60,7 +71,34 @@ def test_wrong_input_shape() -> None:
         transform_points(points, tf[:3, :3])
 
 
-def test_transform_points_subpixel_equivalence() -> None:
+def test_transform_points_equivalence() -> None:
+    """Test equivalence of numpy and numba implementations of transform_points"""
+
+    # Identity transforms and random points for 2D/3D
+    tf_3d = np.eye(4)
+    tf_2d = np.eye(3)
+    pts_3d = np.random.randn(10, 3)
+    pts_2d = np.random.randn(10, 2)
+
+    def test_dim_and_equal(pts: np.ndarray, tf: np.ndarray, dims: int) -> None:
+        res_np = transform_points_np(pts, tf)
+        assert res_np.shape == (pts.shape[0], dims)
+        res_nb = transform_points_nb(pts, tf)
+        np.testing.assert_equal(res_nb, res_np)
+
+    # Matching points and transforms
+    test_dim_and_equal(pts_3d, tf_3d, 3)
+    test_dim_and_equal(pts_2d, tf_2d, 2)
+
+    # Too many transform dimensions
+    with pytest.raises(AssertionError):
+        transform_points_nb(pts_2d, tf_3d)
+    with pytest.raises(AssertionError):
+        transform_points_np(pts_2d, tf_3d)
+
+
+@pytest.mark.parametrize("transform_points_subpixel", [transform_points_subpixel_np, transform_points_subpixel_nb])
+def test_transform_points_subpixel_equivalence(transform_points_subpixel: Callable) -> None:
     # Generate random input points and an identity transform
     input_points = np.random.rand(10, 2)
     tf = np.identity(3)

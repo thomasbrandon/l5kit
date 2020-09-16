@@ -1,4 +1,5 @@
 from typing import Sequence, Union, cast
+from warnings import warn
 
 import numpy as np
 import pymap3d as pm
@@ -163,3 +164,74 @@ def geodetic_to_ecef(lla_point: Union[np.ndarray, Sequence[float]]) -> np.ndarra
         return np.array(pm.geodetic2ecef(lla_point[0], lla_point[1], 0), dtype=np.float64)
     else:
         return np.array(pm.geodetic2ecef(lla_point[0], lla_point[1], lla_point[2]), dtype=np.float64)
+
+
+# Numba optimised versions of transform_points routines
+
+try:
+    import numba as nb
+
+    @nb.njit
+    def _transform_points_nb(points: np.ndarray, transf_matrix: np.ndarray, scale: int, res: np.ndarray) -> None:
+        """
+        Internal Numba function to transform points with optional scaling and int conversion.
+
+        Note that no checking is done in this function so should be performed by callers (some bounds and input
+        checking will be performed but may produce cryptic error messages that are best avoided).
+
+        Args:
+            points (np.ndarray): Input points (Nx2), (Nx3) or (Nx4).
+            transf_matrix (np.ndarray): 3x3 or 4x4 transformation matrix for 2D and 3D input respectively
+            scale (int): Value to scale results by
+            res (np.ndarray): The output array into which to output results
+        """
+        num_dims = transf_matrix.shape[0] - 1
+        # For each point compute a dot product with the transformation matrix, fixing the Z coordinate to 1.
+        for p in range(points.shape[0]):
+            for out_dim in range(num_dims):
+                val = 0
+                for dim in range(num_dims):
+                    val += points[p, dim] * transf_matrix[out_dim, dim]
+                val += transf_matrix[out_dim, num_dims]  # Z coordinate fixed to 1
+                res[p, out_dim] = val * scale
+
+    def transform_points_nb(points: np.ndarray, transf_matrix: np.ndarray) -> np.ndarray:
+        assert len(points.shape) == len(transf_matrix.shape) == 2
+        assert transf_matrix.shape[0] == transf_matrix.shape[1]
+
+        if points.shape[1] not in [2, 3]:
+            raise AssertionError("Points input should be (N, 2) or (N,3) shape, received {}".format(points.shape))
+
+        assert points.shape[1] == transf_matrix.shape[1] - 1, "points dim should be one less than matrix dim"
+
+        # If points contains more dimensions than transforms then only transformed dimensions used
+        res = np.empty((points.shape[0], transf_matrix.shape[0] - 1), dtype=points.dtype)
+        _transform_points_nb(points, transf_matrix, 1, res)
+        return res
+
+    def transform_points_subpixel_nb(points: np.ndarray, transf_matrix: np.ndarray) -> np.ndarray:
+        assert len(points.shape) == len(transf_matrix.shape) == 2
+        assert transf_matrix.shape[0] == transf_matrix.shape[1]
+
+        if points.shape[1] not in [2, 3]:
+            raise AssertionError("Points input should be (N, 2) or (N,3) shape, received {}".format(points.shape))
+
+        assert points.shape[1] == transf_matrix.shape[1] - 1, "points dim should be one less than matrix dim"
+
+        # If points contains more dimensions than transforms then only transformed dimensions used
+        res = np.empty((points.shape[0], transf_matrix.shape[0] - 1), dtype=np.int64())
+        _transform_points_nb(points, transf_matrix, SUBPIXEL_SHIFT_VALUE, res)
+        return res
+
+    # Replace original functions with numba optimised versions
+    transform_points_np = transform_points
+    transform_points_nb.__doc__ = transform_points_np.__doc__
+    transform_points = transform_points_nb
+    transform_points_subpixel_np = transform_points_subpixel
+    transform_points_subpixel_nb.__doc__ = transform_points_subpixel_np.__doc__
+    transform_points_subpixel = transform_points_subpixel_nb
+
+except ImportError:
+    pass
+except Exception as e:
+    warn("Error creating Numba optimised functions. Non-optimised versions will be used.\n" + str(e))
