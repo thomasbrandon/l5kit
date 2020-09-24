@@ -1,9 +1,31 @@
+from typing import Callable
+
 import numpy as np
 import pytest
 
 from l5kit.data import AGENT_DTYPE, ChunkedDataset, LocalDataManager, filter_agents_by_frames
 from l5kit.rasterization import build_rasterizer
-from l5kit.rasterization.box_rasterizer import draw_boxes
+from l5kit.rasterization.box_rasterizer import create_boxes_nb, create_boxes_np, draw_boxes
+
+
+@pytest.mark.parametrize("create_boxes", [create_boxes_np, create_boxes_nb])
+def test_create_boxes_simple(create_boxes: Callable) -> None:
+    field_dtypes = {name: dtype for (name, dtype, *_) in AGENT_DTYPE}
+    centroids = np.array([[20, 20], [60, 60]], dtype=field_dtypes["centroid"])
+    extents = np.array([[10, 20]] * 2, dtype=field_dtypes["extent"])
+    yaws = np.radians(np.array([0, 90]), dtype=field_dtypes["yaw"])
+
+    exp_boxes = np.array([[(15, 10), (15, 30), (25, 30), (25, 10)], [(70, 55), (50, 55), (70, 65), (50, 65)]])
+    boxes = create_boxes(centroids, extents, yaws)
+
+    # Don't want to test order of points so sort points first
+    # This may allow some orderings that fail to rasterize properly but hard otherwise.
+    # Converting to single value and getting sorted indexes is the easiest way to sort
+    def sort_points(arr: np.ndarray) -> np.ndarray:
+        return arr[np.argsort(arr[:, 0] + arr[:, 1] / 1000)]
+
+    for box, exp_box in zip(boxes, exp_boxes):
+        np.testing.assert_almost_equal(sort_points(box), sort_points(exp_box), decimal=5)
 
 
 def test_empty_boxes() -> None:

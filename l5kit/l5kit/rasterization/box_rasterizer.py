@@ -1,4 +1,5 @@
 from typing import List, Optional, Tuple, Union
+from warnings import warn
 
 import cv2
 import numpy as np
@@ -29,6 +30,60 @@ def get_ego_as_agent(frame: np.ndarray) -> np.ndarray:  # TODO this can be usefu
     return ego_agent
 
 
+# base coordinates for transforming extent width/height into a box points
+CORNER_BASE_COORDS = np.asarray([[-1, -1], [-1, 1], [1, 1], [1, -1]]) / 2
+
+
+def create_boxes(centroids: np.ndarray, extents: np.ndarray, yaws: np.ndarray) -> np.ndarray:
+    assert centroids.shape[0] == extents.shape[0] == yaws.shape[0]
+    box_world_coords = np.zeros((centroids.shape[0], 4, 2))  # 4 corners with X/Y
+
+    # compute the corner in world-space (start in origin, rotate and then translate)
+    for idx in range(len(centroids)):
+        corners = CORNER_BASE_COORDS * extents[idx, :2]  # corners in zero
+        r_m = yaw_as_rotation33(yaws[idx])
+        box_world_coords[idx] = transform_points(corners, r_m) + centroids[idx, :2]
+
+    return box_world_coords
+
+
+# Optional numba optimsed version of create_boxes
+try:
+    import numba as nb
+
+    from ..geometry.transform import _transform_points_nb
+
+    @nb.njit
+    def create_boxes_nb(centroids: np.ndarray, extents: np.ndarray, yaws: np.ndarray) -> np.ndarray:
+        n_points = centroids.shape[0]
+        assert n_points == extents.shape[0] == yaws.shape[0]
+        # Convert extents to corner points as offsets from centroid
+        corners = np.expand_dims(extents[:, :2], 1) * CORNER_BASE_COORDS
+        # For each box, apply a transformation matrix to create output points
+        boxes = np.empty((n_points, 4, 2))
+        transf_matrix = np.eye(3)
+        for p in range(centroids.shape[0]):
+            # Euler rotation matrix for rotation around Z
+            transf_matrix[0, 0] = transf_matrix[1, 1] = np.cos(yaws[p])
+            transf_matrix[0, 1] = -np.sin(yaws[p])
+            transf_matrix[1, 0] = np.sin(yaws[p])
+            # Translation to agent centroid
+            transf_matrix[0, 2] = centroids[p, 0]
+            transf_matrix[1, 2] = centroids[p, 1]
+            # Apply transformation matrix and output to boxes
+            # The use of the internal _transform_points_nb JIT function allows inlining of the code by Numba
+            _transform_points_nb(corners[p, ...], transf_matrix, 1, boxes[p, ...])
+        return boxes
+
+    # Replace original implementation with numba implementation
+    create_boxes_np = create_boxes
+    create_boxes_nb.__doc__ = create_boxes_np.__doc__
+    create_boxes = create_boxes_nb
+
+except Exception as e:
+    warn("Error creating Numba optimised functions. Non-optimised versions will be used.\n" + str(e))
+
+
 def draw_boxes(
     raster_size: Tuple[int, int],
     raster_from_world: np.ndarray,
@@ -54,15 +109,7 @@ def draw_boxes(
     else:
         im = np.zeros((raster_size[1], raster_size[0], 3), dtype=np.uint8)
 
-    box_world_coords = np.zeros((len(agents), 4, 2))
-    corners_base_coords = np.asarray([[-1, -1], [-1, 1], [1, 1], [1, -1]])
-
-    # compute the corner in world-space (start in origin, rotate and then translate)
-    for idx, agent in enumerate(agents):
-        corners = corners_base_coords * agent["extent"][:2] / 2  # corners in zero
-        r_m = yaw_as_rotation33(agent["yaw"])
-        box_world_coords[idx] = transform_points(corners, r_m) + agent["centroid"][:2]
-
+    box_world_coords = create_boxes(agents["centroid"], agents["extent"], agents["yaw"])
     box_raster_coords = transform_points_subpixel(box_world_coords.reshape((-1, 2)), raster_from_world)
 
     # fillPoly wants polys in a sequence with points inside as (x,y)
