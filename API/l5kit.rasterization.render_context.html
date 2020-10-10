@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>l5kit.data.combine module &mdash; L5Kit 1.1.0 documentation</title>
+  <title>l5kit.rasterization.render_context module &mdash; L5Kit 1.1.0 documentation</title>
   
 
   
@@ -35,9 +35,7 @@
 
     
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="l5kit.data.filter module" href="l5kit.data.filter.html" />
-    <link rel="prev" title="l5kit.data.proto.road_network_pb2 module" href="l5kit.data.proto.road_network_pb2.html" /> 
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -82,7 +80,7 @@
               
             
             
-              <ul class="current">
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../README.html">ML Prediction, Planning and Simulation for Self-Driving</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../README.html#examples">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../README.html#news">News</a></li>
@@ -91,30 +89,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../README.html#license">License</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../README.html#credits">Credits</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../README.html#contact">Contact</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../api_reference.html">API Reference</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="l5kit.data.html">l5kit.data package</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="l5kit.data.html#subpackages">Subpackages</a></li>
-<li class="toctree-l3 current"><a class="reference internal" href="l5kit.data.html#submodules">Submodules</a><ul class="current">
-<li class="toctree-l4 current"><a class="current reference internal" href="#">l5kit.data.combine module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="l5kit.data.filter.html">l5kit.data.filter module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="l5kit.data.labels.html">l5kit.data.labels module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="l5kit.data.local_data_manager.html">l5kit.data.local_data_manager module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="l5kit.data.map_api.html">l5kit.data.map_api module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="l5kit.data.zarr_dataset.html">l5kit.data.zarr_dataset module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="l5kit.data.zarr_utils.html">l5kit.data.zarr_utils module</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="l5kit.dataset.html">l5kit.dataset package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="l5kit.evaluation.html">l5kit.evaluation package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="l5kit.geometry.html">l5kit.geometry package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="l5kit.kinematic.html">l5kit.kinematic package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="l5kit.random.html">l5kit.random package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="l5kit.sampling.html">l5kit.sampling package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="l5kit.visualization.html">l5kit.visualization package</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../data_format.html">Dataset Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../how_to_contribute.html">How to contribute</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../competition.html">Competition</a></li>
@@ -166,17 +141,13 @@
     
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
-          <li><a href="../api_reference.html">API Reference</a> &raquo;</li>
-        
-          <li><a href="l5kit.data.html">l5kit.data package</a> &raquo;</li>
-        
-      <li>l5kit.data.combine module</li>
+      <li>l5kit.rasterization.render_context module</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="../_sources/API/l5kit.data.combine.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/API/l5kit.rasterization.render_context.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -189,22 +160,33 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="module-l5kit.data.combine">
-<span id="l5kit-data-combine-module"></span><h1>l5kit.data.combine module<a class="headerlink" href="#module-l5kit.data.combine" title="Permalink to this headline">¶</a></h1>
-<dl class="py function">
-<dt id="l5kit.data.combine.get_combined_scenes">
-<code class="sig-prename descclassname">l5kit.data.combine.</code><code class="sig-name descname">get_combined_scenes</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">scenes</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#l5kit.data.combine.get_combined_scenes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Takes as input an np.ndarray or zarr array with scenes, and combines scenes that follow up
-eachother perfectly (i.e. from a single recording by the same host). Returns an np.ndarray
-of combined scenes.</p>
-<blockquote>
-<div><dl class="simple">
-<dt>Arguments:</dt><dd><p>scenes (np.ndarray): scenes</p>
+  <div class="section" id="module-l5kit.rasterization.render_context">
+<span id="l5kit-rasterization-render-context-module"></span><h1>l5kit.rasterization.render_context module<a class="headerlink" href="#module-l5kit.rasterization.render_context" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="l5kit.rasterization.render_context.RenderContext">
+<em class="property">class </em><code class="sig-prename descclassname">l5kit.rasterization.render_context.</code><code class="sig-name descname">RenderContext</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">raster_size_px</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em>, <em class="sig-param"><span class="n">pixel_size_m</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em>, <em class="sig-param"><span class="n">center_in_raster_ratio</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em><span class="sig-paren">)</span><a class="headerlink" href="#l5kit.rasterization.render_context.RenderContext" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="l5kit.rasterization.render_context.RenderContext.raster_from_world">
+<code class="sig-name descname">raster_from_world</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">position_m</span><span class="p">:</span> <span class="n">numpy.ndarray</span></em>, <em class="sig-param"><span class="n">angle_rad</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#l5kit.rasterization.render_context.RenderContext.raster_from_world" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a matrix to convert a pose in world coordinates into raster coordinates</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>render_context</strong> (<a class="reference internal" href="l5kit.rasterization.html#l5kit.rasterization.RenderContext" title="l5kit.rasterization.RenderContext"><em>RenderContext</em></a>) – the context for rasterisation</p></li>
+<li><p><strong>position_m</strong> (<em>np.ndarray</em>) – XY position in world coordinates</p></li>
+<li><p><strong>angle_rad</strong> (<em>float</em>) – rotation angle in world coordinates</p></li>
+</ul>
 </dd>
-<dt>Returns:</dt><dd><p>np.ndarray – combined scenes where followup scenes have been merged.</p>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>a transformation matrix from world coordinates to raster coordinates</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>(np.ndarray)</p>
 </dd>
 </dl>
-</div></blockquote>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -214,15 +196,6 @@ of combined scenes.</p>
            
           </div>
           <footer>
-  
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="l5kit.data.filter.html" class="btn btn-neutral float-right" title="l5kit.data.filter module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="l5kit.data.proto.road_network_pb2.html" class="btn btn-neutral float-left" title="l5kit.data.proto.road_network_pb2 module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
   
 
   <hr/>
